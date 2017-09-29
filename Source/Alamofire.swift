@@ -24,6 +24,7 @@
 
 import Foundation
 
+/// 表示一个可以转换成 URL 的协议
 /// Types adopting the `URLConvertible` protocol can be used to construct URLs, which are then used to construct
 /// URL requests.
 public protocol URLConvertible {
@@ -32,9 +33,10 @@ public protocol URLConvertible {
     /// - throws: An `Error` if the type cannot be converted to a `URL`.
     ///
     /// - returns: A URL or throws an `Error`.
+    /// 返回一个 url , 如果失败, 可以抛出异常
     func asURL() throws -> URL
 }
-
+/// string 实现的 URLConvertible
 extension String: URLConvertible {
     /// Returns a URL if `self` represents a valid URL string that conforms to RFC 2396 or throws an `AFError`.
     ///
@@ -42,16 +44,17 @@ extension String: URLConvertible {
     ///
     /// - returns: A URL or throws an `AFError`.
     public func asURL() throws -> URL {
+        /// 如果转换 url 失败, 抛出一个异常
         guard let url = URL(string: self) else { throw AFError.invalidURL(url: self) }
         return url
     }
 }
-
+/// URL 实现的 URLConvertible
 extension URL: URLConvertible {
     /// Returns self.
     public func asURL() throws -> URL { return self }
 }
-
+/// URLComponents 实现的 URLConvertible
 extension URLComponents: URLConvertible {
     /// Returns a URL if `url` is not nil, otherwise throws an `Error`.
     ///
@@ -65,7 +68,7 @@ extension URLComponents: URLConvertible {
 }
 
 // MARK: -
-
+/// 可以转换成 urlrequest 的协议
 /// Types adopting the `URLRequestConvertible` protocol can be used to construct URL requests.
 public protocol URLRequestConvertible {
     /// Returns a URL request or throws if an `Error` was encountered.
@@ -73,21 +76,23 @@ public protocol URLRequestConvertible {
     /// - throws: An `Error` if the underlying `URLRequest` is `nil`.
     ///
     /// - returns: A URL request.
+    /// 返回一个 urlrequest, 如果有错, 可以抛出异常
     func asURLRequest() throws -> URLRequest
 }
 
 extension URLRequestConvertible {
+    // 获取 request
     /// The URL request.
     public var urlRequest: URLRequest? { return try? asURLRequest() }
 }
-
+/// URLrequest 的实现
 extension URLRequest: URLRequestConvertible {
     /// Returns a URL request or throws if an `Error` was encountered.
     public func asURLRequest() throws -> URLRequest { return self }
 }
 
 // MARK: -
-
+/// URLRequest 的扩展, 可以使用一个 URLConvertible 及相关参数创建一个 request
 extension URLRequest {
     /// Creates an instance with the specified `method`, `urlString` and `headers`.
     ///
@@ -109,13 +114,14 @@ extension URLRequest {
             }
         }
     }
-
+    // 使用适配器, 生成一个新的 URLRequest
     func adapt(using adapter: RequestAdapter?) throws -> URLRequest {
         guard let adapter = adapter else { return self }
         return try adapter.adapt(self)
     }
 }
 
+// MARK: - 下面都是一些快捷方法, 和使用 SessionManager.default.request 一样
 // MARK: - Data Request
 
 /// Creates a `DataRequest` using the default `SessionManager` to retrieve the contents of the specified `url`,
