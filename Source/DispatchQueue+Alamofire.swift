@@ -25,12 +25,14 @@
 import Dispatch
 import Foundation
 
+/// dispatch queue 的扩展, 主要是实现一些快捷方法
 extension DispatchQueue {
+    // 快捷获取队列方法
     static var userInteractive: DispatchQueue { return DispatchQueue.global(qos: .userInteractive) }
     static var userInitiated: DispatchQueue { return DispatchQueue.global(qos: .userInitiated) }
     static var utility: DispatchQueue { return DispatchQueue.global(qos: .utility) }
     static var background: DispatchQueue { return DispatchQueue.global(qos: .background) }
-
+    // asyncAfter 的快捷方法
     func after(_ delay: TimeInterval, execute closure: @escaping () -> Void) {
         asyncAfter(deadline: .now() + delay, execute: closure)
     }
