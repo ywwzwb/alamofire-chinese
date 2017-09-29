@@ -457,11 +457,11 @@ open class SessionManager {
         return download
     }
 
-    // MARK: - Upload Request
+    // MARK: - Upload Request 上传
 
     // MARK: File
 
-    /// Creates an `UploadRequest` from the specified `url`, `method` and `headers` for uploading the `file`.
+    /// Creates an `UploadRequest` from the specified `url`, `method` and `headers` for uploading the `file`. 使用指定的 url, 文件 url, method, header 等参数上传
     ///
     /// If `startRequestsImmediately` is `true`, the request will have `resume()` called before being returned.
     ///
@@ -488,7 +488,7 @@ open class SessionManager {
     }
 
     /// Creates a `UploadRequest` from the specified `urlRequest` for uploading the `file`.
-    ///
+    /// 同上
     /// If `startRequestsImmediately` is `true`, the request will have `resume()` called before being returned.
     ///
     /// - parameter file:       The file to upload.
@@ -507,7 +507,7 @@ open class SessionManager {
 
     // MARK: Data
 
-    /// Creates an `UploadRequest` from the specified `url`, `method` and `headers` for uploading the `data`.
+    /// Creates an `UploadRequest` from the specified `url`, `method` and `headers` for uploading the `data`.// 直接上传 data
     ///
     /// If `startRequestsImmediately` is `true`, the request will have `resume()` called before being returned.
     ///
@@ -534,7 +534,7 @@ open class SessionManager {
     }
 
     /// Creates an `UploadRequest` from the specified `urlRequest` for uploading the `data`.
-    ///
+    /// 同上
     /// If `startRequestsImmediately` is `true`, the request will have `resume()` called before being returned.
     ///
     /// - parameter data:       The data to upload.
@@ -554,7 +554,7 @@ open class SessionManager {
     // MARK: InputStream
 
     /// Creates an `UploadRequest` from the specified `url`, `method` and `headers` for uploading the `stream`.
-    ///
+    /// 使用 inputstream 上传
     /// If `startRequestsImmediately` is `true`, the request will have `resume()` called before being returned.
     ///
     /// - parameter stream:  The stream to upload.
@@ -580,7 +580,7 @@ open class SessionManager {
     }
 
     /// Creates an `UploadRequest` from the specified `urlRequest` for uploading the `stream`.
-    ///
+    /// 同上
     /// If `startRequestsImmediately` is `true`, the request will have `resume()` called before being returned.
     ///
     /// - parameter stream:     The stream to upload.
@@ -601,7 +601,11 @@ open class SessionManager {
 
     /// Encodes `multipartFormData` using `encodingMemoryThreshold` and calls `encodingCompletion` with new
     /// `UploadRequest` using the `url`, `method` and `headers`.
+    /// 使用 encodingMemoryThreshold 参数编码 multipartFormData, 完成编码后会调用 encodingCompletion 返回一个 UploadRequest
     ///
+    /// 理解MultipartFormData 的内存使用是非常重要的. 如果数据量很小, 那么直接在内存中编码, 然后直接上传, 这样效率目前来讲是最高的, 然而, 不过数据列很大, 直接在内存中编码会导致你应用崩溃. 过大的数据必须写入到磁盘, 然后使用输入输出流确保占用内存足够的小, 然后数据就能通过这个文件以流的方式上传. 如果需要上传大数据, 例如视频, 那么必须用流式上传以减少内存占用
+    /// encodingMemoryThreshold 参数能让Alamofire 自动决定是要在内存中还是在磁盘中编码解码. 如果数据小于 encodingMemoryThreshold, 那么就直接在内存处理, 否则则在磁盘中处理, 后续的上传过程则根据是否在内存中编码而选择以 Data 方式还是 Stream 方式上传数据.
+    /// encodingMemoryThreshold 默认值约为10M
     /// It is important to understand the memory implications of uploading `MultipartFormData`. If the cummulative
     /// payload is small, encoding the data in-memory and directly uploading to a server is the by far the most
     /// efficient approach. However, if the payload is too large, encoding the data in-memory could cause your app to
@@ -648,6 +652,7 @@ open class SessionManager {
 
     /// Encodes `multipartFormData` using `encodingMemoryThreshold` and calls `encodingCompletion` with new
     /// `UploadRequest` using the `urlRequest`.
+    /// 同上
     ///
     /// It is important to understand the memory implications of uploading `MultipartFormData`. If the cummulative
     /// payload is small, encoding the data in-memory and directly uploading to a server is the by far the most
@@ -676,39 +681,49 @@ open class SessionManager {
         encodingCompletion: ((MultipartFormDataEncodingResult) -> Void)?)
     {
         DispatchQueue.global(qos: .utility).async {
+            //创建一个 formdata
             let formData = MultipartFormData()
+            // 根据闭包初始化 form data
             multipartFormData(formData)
 
             var tempFileURL: URL?
 
             do {
                 var urlRequestWithContentType = try urlRequest.asURLRequest()
+                // 设置 contenttype为multipart/form-data; 并在其中加入 boundary
                 urlRequestWithContentType.setValue(formData.contentType, forHTTPHeaderField: "Content-Type")
 
                 let isBackgroundSession = self.session.configuration.identifier != nil
 
+                /// 如果不是后台任务, 而且数据量也很小, 那么直接在内存中编码
                 if formData.contentLength < encodingMemoryThreshold && !isBackgroundSession {
+                    // 编码为 data
                     let data = try formData.encode()
-
+                    // 生成编码结果
                     let encodingResult = MultipartFormDataEncodingResult.success(
                         request: self.upload(data, with: urlRequestWithContentType),
                         streamingFromDisk: false,
                         streamFileURL: nil
                     )
-
+                    // 调用编码结束回调
                     DispatchQueue.main.async { encodingCompletion?(encodingResult) }
                 } else {
+                    // 需要在硬盘中编码
                     let fileManager = FileManager.default
+                    // 获取临时文件夹
                     let tempDirectoryURL = URL(fileURLWithPath: NSTemporaryDirectory())
+                    // 获取临时数据存放目录
                     let directoryURL = tempDirectoryURL.appendingPathComponent("org.alamofire.manager/multipart.form.data")
+                    // 用 uuid生成临时文件名
                     let fileName = UUID().uuidString
+                    // 拼接完成最后的文件路径
                     let fileURL = directoryURL.appendingPathComponent(fileName)
-
                     tempFileURL = fileURL
 
                     var directoryError: Error?
 
                     // Create directory inside serial queue to ensure two threads don't do this in parallel
+                    // 在一个串行队列中同步执行创建文件夹, 避免多线程时同时执行这段代码
                     self.queue.sync {
                         do {
                             try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true, attributes: nil)
@@ -716,14 +731,15 @@ open class SessionManager {
                             directoryError = error
                         }
                     }
-
+                    // 如果创建文件夹出错, 那么抛出异常
                     if let directoryError = directoryError { throw directoryError }
-
+                    /// 写入表单数据到硬盘
                     try formData.writeEncodedData(to: fileURL)
-
+                    /// 获取 uoloadrequest
                     let upload = self.upload(fileURL, with: urlRequestWithContentType)
 
                     // Cleanup the temp file once the upload is complete
+                    // 在上传完成后, 清理临时文件
                     upload.delegate.queue.addOperation {
                         do {
                             try FileManager.default.removeItem(at: fileURL)
@@ -733,17 +749,19 @@ open class SessionManager {
                     }
 
                     DispatchQueue.main.async {
+                        /// 生成编码结果
                         let encodingResult = MultipartFormDataEncodingResult.success(
                             request: upload,
                             streamingFromDisk: true,
                             streamFileURL: fileURL
                         )
-
+                        // 回调block 说明编码结果
                         encodingCompletion?(encodingResult)
                     }
                 }
             } catch {
                 // Cleanup the temp file in the event that the multipart form data encoding failed
+                /// 如果发生异常, 则清理临时文件
                 if let tempFileURL = tempFileURL {
                     do {
                         try FileManager.default.removeItem(at: tempFileURL)
@@ -751,23 +769,26 @@ open class SessionManager {
                         // No-op
                     }
                 }
-
+                // 调用回调指明发生错误
                 DispatchQueue.main.async { encodingCompletion?(.failure(error)) }
             }
         }
     }
 
     // MARK: Private - Upload Implementation
-
+    // 内部函数, 用于生成 uploadrequest
     private func upload(_ uploadable: UploadRequest.Uploadable) -> UploadRequest {
         do {
+            // 使用 adapter 生成一个 URLSessionUploadTask
             let task = try uploadable.task(session: session, adapter: adapter, queue: queue)
+            // 生成 request 对象
             let upload = UploadRequest(session: session, requestTask: .upload(uploadable, task))
 
+            /// 如果是牛市上传, 则在代理中返回 stream
             if case let .stream(inputStream, _) = uploadable {
                 upload.delegate.taskNeedNewBodyStream = { _, _ in inputStream }
             }
-
+            // 绑定代理
             delegate[task] = upload
 
             if startRequestsImmediately { upload.resume() }
@@ -777,7 +798,7 @@ open class SessionManager {
             return upload(uploadable, failedWith: error)
         }
     }
-
+    // 内部函数, 用于处理上传错误
     private func upload(_ uploadable: UploadRequest.Uploadable?, failedWith error: Error) -> UploadRequest {
         var uploadTask: Request.RequestTask = .upload(nil, nil)
 
@@ -800,11 +821,13 @@ open class SessionManager {
 #if !os(watchOS)
 
     // MARK: - Stream Request
+    // 流式请求
 
     // MARK: Hostname and Port
 
     /// Creates a `StreamRequest` for bidirectional streaming using the `hostname` and `port`.
     ///
+    /// 创建流式请求, 可以和服务器进行双休的数据流交流
     /// If `startRequestsImmediately` is `true`, the request will have `resume()` called before being returned.
     ///
     /// - parameter hostName: The hostname of the server to connect to.
@@ -821,6 +844,7 @@ open class SessionManager {
 
     /// Creates a `StreamRequest` for bidirectional streaming using the `netService`.
     ///
+    /// 同上, 使用 NetService 来初始化
     /// If `startRequestsImmediately` is `true`, the request will have `resume()` called before being returned.
     ///
     /// - parameter netService: The net service used to identify the endpoint.
@@ -833,11 +857,13 @@ open class SessionManager {
     }
 
     // MARK: Private - Stream Implementation
-
+    // 内部函数, 用于生成 StreamRequest
     @available(iOS 9.0, macOS 10.11, tvOS 9.0, *)
     private func stream(_ streamable: StreamRequest.Streamable) -> StreamRequest {
         do {
+            /// 生成 URLSessionStreamTask
             let task = try streamable.task(session: session, adapter: adapter, queue: queue)
+            // 生成请求对象
             let request = StreamRequest(session: session, requestTask: .stream(streamable, task))
 
             delegate[task] = request
@@ -849,7 +875,7 @@ open class SessionManager {
             return stream(failedWith: error)
         }
     }
-
+    // StreamRequest错误处理
     @available(iOS 9.0, macOS 10.11, tvOS 9.0, *)
     private func stream(failedWith error: Error) -> StreamRequest {
         let stream = StreamRequest(session: session, requestTask: .stream(nil, nil), error: error)
@@ -860,7 +886,7 @@ open class SessionManager {
 #endif
 
     // MARK: - Internal - Retry Request
-
+    // 内部函数, 重试请求, 重试成功返回 true
     func retry(_ request: Request) -> Bool {
         guard let originalTask = request.originalTask else { return false }
 
@@ -885,23 +911,24 @@ open class SessionManager {
     private func allowRetrier(_ retrier: RequestRetrier, toRetry request: Request, with error: Error) {
         DispatchQueue.utility.async { [weak self] in
             guard let strongSelf = self else { return }
-
+            // 调用重试器检查是否需要重试
             retrier.should(strongSelf, retry: request, with: error) { shouldRetry, timeDelay in
                 guard let strongSelf = self else { return }
-
+                // 如果需要重试, 那么重试
                 guard shouldRetry else {
                     if strongSelf.startRequestsImmediately { request.resume() }
                     return
                 }
-
+                // 延迟调用
                 DispatchQueue.utility.after(timeDelay) {
                     guard let strongSelf = self else { return }
-
+                    // 检查是否能够重试
                     let retrySucceeded = strongSelf.retry(request)
-
+                    // 如果重试成功, 绑定 delegate
                     if retrySucceeded, let task = request.task {
                         strongSelf.delegate[task] = request
                     } else {
+                        // 这里会发生失败
                         if strongSelf.startRequestsImmediately { request.resume() }
                     }
                 }
