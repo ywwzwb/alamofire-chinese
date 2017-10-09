@@ -555,7 +555,7 @@ extension SessionDelegate: URLSessionDataDelegate {
             self[downloadTask]?.delegate = DownloadTaskDelegate(task: downloadTask)
         }
     }
-
+    /// 接收到了数据
     /// Tells the delegate that the data task has received some of the expected data.
     ///
     /// - parameter session:  The session containing the data task that provided data.
@@ -569,6 +569,7 @@ extension SessionDelegate: URLSessionDataDelegate {
         }
     }
 
+    /// 询问是否需要缓存 response
     /// Asks the delegate whether the data (or upload) task should store the response in the cache.
     ///
     /// - parameter session:           The session containing the data (or upload) task.
@@ -609,6 +610,7 @@ extension SessionDelegate: URLSessionDataDelegate {
 // MARK: - URLSessionDownloadDelegate
 
 extension SessionDelegate: URLSessionDownloadDelegate {
+    /// 下载完成
     /// Tells the delegate that a download task has finished downloading.
     ///
     /// - parameter session:      The session containing the download task that finished.
@@ -627,7 +629,7 @@ extension SessionDelegate: URLSessionDownloadDelegate {
             delegate.urlSession(session, downloadTask: downloadTask, didFinishDownloadingTo: location)
         }
     }
-
+    /// 周期性的调用, 用于表明进度
     /// Periodically informs the delegate about the download’s progress.
     ///
     /// - parameter session:                   The session containing the download task.
@@ -657,7 +659,8 @@ extension SessionDelegate: URLSessionDownloadDelegate {
             )
         }
     }
-
+    
+    /// 断点续传恢复了
     /// Tells the delegate that the download task has resumed downloading.
     ///
     /// - parameter session:            The session containing the download task that finished.
