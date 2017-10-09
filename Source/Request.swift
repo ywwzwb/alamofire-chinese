@@ -43,8 +43,7 @@ public protocol RequestAdapter {
 /// A closure executed when the `RequestRetrier` determines whether a `Request` should be retried or not.
 public typealias RequestRetryCompletion = (_ shouldRetry: Bool, _ timeDelay: TimeInterval) -> Void
 
-/// 这个类型定义了某一个请求在发生错误后, 是否应该重试, 这里有点问题
-///TODO:??? session manager 里面对 shouldRetry 的处理
+/// 这个类型定义了某一个请求在发生错误后, 是否应该重试
 /// A type that determines whether a request should be retried after being executed by the specified session manager
 /// and encountering an error.
 public protocol RequestRetrier {

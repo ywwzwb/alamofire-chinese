@@ -23,10 +23,10 @@
 //
 
 import Foundation
-
+/// 负责处理所有与内部 session 关联的代理回调
 /// Responsible for handling all delegate callbacks for the underlying session.
 open class SessionDelegate: NSObject {
-
+    // 重写 URLSessionDelegate 的所有回调函数 为苏醒
     // MARK: URLSessionDelegate Overrides
 
     /// Overrides default behavior for URLSessionDelegate method `urlSession(_:didBecomeInvalidWithError:)`.
@@ -159,14 +159,17 @@ open class SessionDelegate: NSObject {
 #endif
 
     // MARK: Properties
-
+    // 属性
+    // 重试器
     var retrier: RequestRetrier?
+    // session 管理器
     weak var sessionManager: SessionManager?
-
+    // 关联的请求, key 是 请求的 uid, value 是请求
     private var requests: [Int: Request] = [:]
+    // 读写锁
     private let lock = NSLock()
-
     /// Access the task delegate for the specified task in a thread-safe manner.
+    // 通过下标获取 request
     open subscript(task: URLSessionTask) -> Request? {
         get {
             lock.lock() ; defer { lock.unlock() }
@@ -188,7 +191,7 @@ open class SessionDelegate: NSObject {
     }
 
     // MARK: NSObject Overrides
-
+    // 重写 NSobject 函数, 用于URLSessionDelegate 的重载
     /// Returns a `Bool` indicating whether the `SessionDelegate` implements or inherits a method that can respond
     /// to a specified message.
     ///
@@ -235,8 +238,9 @@ open class SessionDelegate: NSObject {
 }
 
 // MARK: - URLSessionDelegate
-
+// 实现 URLSessionDelegate 协议
 extension SessionDelegate: URLSessionDelegate {
+    /// session 已经失效
     /// Tells the delegate that the session has been invalidated.
     ///
     /// - parameter session: The session object that was invalidated.
@@ -245,6 +249,7 @@ extension SessionDelegate: URLSessionDelegate {
         sessionDidBecomeInvalidWithError?(session, error)
     }
 
+    /// session 收到证书验证
     /// Requests credentials from the delegate in response to a session-level authentication request from the
     /// remote server.
     ///
@@ -257,19 +262,20 @@ extension SessionDelegate: URLSessionDelegate {
         didReceive challenge: URLAuthenticationChallenge,
         completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
     {
+        /// 如果有自定义的完整实现, 则执行自定义实现
         guard sessionDidReceiveChallengeWithCompletion == nil else {
             sessionDidReceiveChallengeWithCompletion?(session, challenge, completionHandler)
             return
         }
-
+        /// 默认实现
         var disposition: URLSession.AuthChallengeDisposition = .performDefaultHandling
         var credential: URLCredential?
-
+        // 如果实现了 didrecive, 那么根据自定义实现来获取处理方式和证书
         if let sessionDidReceiveChallenge = sessionDidReceiveChallenge {
             (disposition, credential) = sessionDidReceiveChallenge(session, challenge)
         } else if challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust {
+            // 默认处理方式
             let host = challenge.protectionSpace.host
-
             if
                 let serverTrustPolicy = session.serverTrustPolicyManager?.serverTrustPolicy(forHost: host),
                 let serverTrust = challenge.protectionSpace.serverTrust
@@ -282,12 +288,13 @@ extension SessionDelegate: URLSessionDelegate {
                 }
             }
         }
-
+        // 处理完成调用结束回调
         completionHandler(disposition, credential)
     }
 
 #if !os(macOS)
 
+    /// background session 结束了
     /// Tells the delegate that all messages enqueued for a session have been delivered.
     ///
     /// - parameter session: The session that no longer has any outstanding requests.
@@ -301,6 +308,7 @@ extension SessionDelegate: URLSessionDelegate {
 // MARK: - URLSessionTaskDelegate
 
 extension SessionDelegate: URLSessionTaskDelegate {
+    /// 将要 http 重定向
     /// Tells the delegate that the remote server requested an HTTP redirect.
     ///
     /// - parameter session:           The session containing the task whose request resulted in a redirect.
@@ -317,13 +325,14 @@ extension SessionDelegate: URLSessionTaskDelegate {
         newRequest request: URLRequest,
         completionHandler: @escaping (URLRequest?) -> Void)
     {
+        // 如果有自定义的完整实现, 执行自定义实现
         guard taskWillPerformHTTPRedirectionWithCompletion == nil else {
             taskWillPerformHTTPRedirectionWithCompletion?(session, task, response, request, completionHandler)
             return
         }
 
         var redirectRequest: URLRequest? = request
-
+        // 执行另一个自动以实现, 可以看出, 有withCompletetion 是会覆盖没有的那个方法
         if let taskWillPerformHTTPRedirection = taskWillPerformHTTPRedirection {
             redirectRequest = taskWillPerformHTTPRedirection(session, task, response, request)
         }
@@ -331,6 +340,7 @@ extension SessionDelegate: URLSessionTaskDelegate {
         completionHandler(redirectRequest)
     }
 
+    /// 和上面的类似, 这个有一个 task 参数, 可以针对每一个 task 单独配置
     /// Requests credentials from the delegate in response to an authentication request from the remote server.
     ///
     /// - parameter session:           The session containing the task whose request requires authentication.
@@ -363,7 +373,8 @@ extension SessionDelegate: URLSessionTaskDelegate {
             urlSession(session, didReceive: challenge, completionHandler: completionHandler)
         }
     }
-
+    
+    /// 通知流需要新的内容
     /// Tells the delegate when a task requires a new request body stream to send to the remote server.
     ///
     /// - parameter session:           The session containing the task that needs a new body stream.
@@ -385,7 +396,7 @@ extension SessionDelegate: URLSessionTaskDelegate {
             delegate.urlSession(session, task: task, needNewBodyStream: completionHandler)
         }
     }
-
+    /// 周期性的通知已经发送了多少数据
     /// Periodically informs the delegate of the progress of sending body content to the server.
     ///
     /// - parameter session:                  The session containing the data task.
@@ -427,7 +438,7 @@ extension SessionDelegate: URLSessionTaskDelegate {
     }
 
 #endif
-
+    /// 通知任务完成
     /// Tells the delegate that the task finished transferring data.
     ///
     /// - parameter session: The session containing the task whose request finished transferring data.
@@ -450,37 +461,42 @@ extension SessionDelegate: URLSessionTaskDelegate {
 
             strongSelf[task] = nil
         }
-
+        // 如果没有对应的 task和 session manager, 直接调用 complete 闭包
+        // 默认情况下, 使用 sessionmanager.default 都会给 sessionManager 赋值
+        // 而只要创建 urlsession 成功就会有 task
         guard let request = self[task], let sessionManager = sessionManager else {
             completeTask(session, task, error)
             return
         }
-
+        // 调用所有的校验器
         // Run all validations on the request before checking if an error occurred
         request.validations.forEach { $0() }
-
+        // 如果校验出错, 那么 request.delegate.error 就会有错误
         // Determine whether an error has occurred
         var error: Error? = error
-
+        
         if request.delegate.error != nil {
             error = request.delegate.error
         }
 
         /// If an error occurred and the retrier is set, asynchronously ask the retrier if the request
         /// should be retried. Otherwise, complete the task by notifying the task delegate.
+        /// 如果发生错误, 而且有重试器, 那么异步的查询是否需要重试, 否则, 直接完成任务
         if let retrier = retrier, let error = error {
             retrier.should(sessionManager, retry: request, with: error) { [weak self] shouldRetry, timeDelay in
+                // 如果不需要重试, 那么直接完成
                 guard shouldRetry else { completeTask(session, task, error) ; return }
-
+                // 在一定时间后重试
                 DispatchQueue.utility.after(timeDelay) { [weak self] in
                     guard let strongSelf = self else { return }
-
+                    
                     let retrySucceeded = strongSelf.sessionManager?.retry(request) ?? false
-
+                    // 如果重试创建成功, 那么记录新的请求
                     if retrySucceeded, let task = request.task {
                         strongSelf[task] = request
                         return
                     } else {
+                        // 创建失败, 直接完成任务
                         completeTask(session, task, error)
                     }
                 }
@@ -502,6 +518,7 @@ extension SessionDelegate: URLSessionDataDelegate {
     /// - parameter completionHandler: A completion handler that your code calls to continue the transfer, passing a
     ///                                constant to indicate whether the transfer should continue as a data task or
     ///                                should become a download task.
+    /// 通知收到了响应, 可以在 completionHandler 里面讲 data task 变为 downlaod task
     open func urlSession(
         _ session: URLSession,
         dataTask: URLSessionDataTask,
@@ -521,7 +538,7 @@ extension SessionDelegate: URLSessionDataDelegate {
 
         completionHandler(disposition)
     }
-
+    /// 通知 datatask  变为了一个 downloadtask
     /// Tells the delegate that the data task was changed to a download task.
     ///
     /// - parameter session:      The session containing the task that was replaced by a download task.

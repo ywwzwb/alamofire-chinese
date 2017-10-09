@@ -130,7 +130,7 @@ open class SessionManager {
     /// 内部的 urlsession 对象
     /// The underlying session.
     open let session: URLSession
-    /// 会话代理对象, 可以出了所有的任务和会话回调事件
+    /// 会话代理对象, 可以处理所有的任务和会话回调事件
     /// The session delegate handling all the task and session delegate callbacks.
     open let delegate: SessionDelegate
     /// 是否在 request 创建完毕后立即发起请求, 默认为是
@@ -295,8 +295,7 @@ open class SessionManager {
         let underlyingError = error.underlyingAdaptError ?? error
         // 根据以上信息, 创建一个 requst
         let request = DataRequest(session: session, requestTask: requestTask, error: underlyingError)
-        // 如果由重试器, 那么重试??
-        //TODO: 确认
+        // 如果是由适配器导致的错误, 而且有重试器, 那么尝试重试
         if let retrier = retrier, error is AdaptError {
             allowRetrier(retrier, toRetry: request, with: underlyingError)
         } else {
@@ -916,8 +915,8 @@ open class SessionManager {
             // 调用重试器检查是否需要重试
             retrier.should(strongSelf, retry: request, with: error) { shouldRetry, timeDelay in
                 guard let strongSelf = self else { return }
-                // 如果需要重试, 那么重试
                 guard shouldRetry else {
+                    // 如果需要不重试, 那么继续请求(会在后面继续发生错误)
                     if strongSelf.startRequestsImmediately { request.resume() }
                     return
                 }
