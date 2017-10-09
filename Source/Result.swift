@@ -23,7 +23,7 @@
 //
 
 import Foundation
-
+/// 用于呈现一个返回结果, 包括错误和成功, 使用泛型来确定成功返回的结果类型
 /// Used to represent whether a request was successful or encountered an error.
 ///
 /// - success: The request and all post processing operations were successful resulting in the serialization of the
@@ -32,9 +32,9 @@ import Foundation
 /// - failure: The request encountered an error resulting in a failure. The associated values are the original data
 ///            provided by the server as well as the error that caused the failure.
 public enum Result<Value> {
-    case success(Value)
-    case failure(Error)
-
+    case success(Value)// 成功的结果
+    case failure(Error)// 失败的结果
+    /// 是否成功
     /// Returns `true` if the result is a success, `false` otherwise.
     public var isSuccess: Bool {
         switch self {
@@ -44,12 +44,12 @@ public enum Result<Value> {
             return false
         }
     }
-
+    /// 是否失败
     /// Returns `true` if the result is a failure, `false` otherwise.
     public var isFailure: Bool {
         return !isSuccess
     }
-
+    /// 返回的成功结果
     /// Returns the associated value if the result is a success, `nil` otherwise.
     public var value: Value? {
         switch self {
@@ -59,7 +59,7 @@ public enum Result<Value> {
             return nil
         }
     }
-
+    /// 返回的错误
     /// Returns the associated error value if the result is a failure, `nil` otherwise.
     public var error: Error? {
         switch self {
@@ -72,7 +72,7 @@ public enum Result<Value> {
 }
 
 // MARK: - CustomStringConvertible
-
+/// 调试信息
 extension Result: CustomStringConvertible {
     /// The textual representation used when written to an output stream, which includes whether the result was a
     /// success or failure.
@@ -87,7 +87,7 @@ extension Result: CustomStringConvertible {
 }
 
 // MARK: - CustomDebugStringConvertible
-
+/// 调试信息
 extension Result: CustomDebugStringConvertible {
     /// The debug textual representation used when written to an output stream, which includes whether the result was a
     /// success or failure in addition to the value or error.
@@ -104,6 +104,7 @@ extension Result: CustomDebugStringConvertible {
 // MARK: - Functional APIs
 
 extension Result {
+    /// 使用一个会抛出异常的闭包来初始化, 抛出异常时, 返回错误
     /// Creates a `Result` instance from the result of a closure.
     ///
     /// A failure result is created when the closure throws, and a success result is created when the closure
@@ -129,7 +130,7 @@ extension Result {
             self = .failure(error)
         }
     }
-
+    /// 返回一个会抛出异常的结果, 如果结果是失败的, 那么抛出异常
     /// Returns the success value, or throws the failure error.
     ///
     ///     let possibleString: Result<String> = .success("success")
@@ -245,7 +246,7 @@ extension Result {
             return self
         }
     }
-
+    /// 如果有成功的值, 那么会调用内部这个闭包, 并将成功的值作为参数传递给闭包
     /// Evaluates the specified closure when the `Result` is a success, passing the unwrapped value as a parameter.
     ///
     /// Use the `withValue` function to evaluate the passed closure without modifying the `Result` instance.
@@ -258,7 +259,7 @@ extension Result {
 
         return self
     }
-
+    /// 类似于上面的函数, 不过是针对错误结果
     /// Evaluates the specified closure when the `Result` is a failure, passing the unwrapped error as a parameter.
     ///
     /// Use the `withError` function to evaluate the passed closure without modifying the `Result` instance.
@@ -271,7 +272,7 @@ extension Result {
 
         return self
     }
-
+    /// 和 withValue 类似, 不过这个闭包内部的函数没有参数
     /// Evaluates the specified closure when the `Result` is a success.
     ///
     /// Use the `ifSuccess` function to evaluate the passed closure without modifying the `Result` instance.
@@ -284,7 +285,7 @@ extension Result {
 
         return self
     }
-
+    /// 同上, 不过是失败的时候会调用
     /// Evaluates the specified closure when the `Result` is a failure.
     ///
     /// Use the `ifFailure` function to evaluate the passed closure without modifying the `Result` instance.
