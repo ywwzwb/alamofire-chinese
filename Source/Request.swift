@@ -578,7 +578,7 @@ open class DownloadRequest: Request {
 open class UploadRequest: DataRequest {
 
     // MARK: Helper Types
-
+    // 用于生成 urlsessiontask, 可以使用数据, 文件, 流 三种方式生成 task
     enum Uploadable: TaskConvertible {
         case data(Data, URLRequest)
         case file(URL, URLRequest)
