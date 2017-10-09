@@ -891,14 +891,16 @@ open class SessionManager {
         guard let originalTask = request.originalTask else { return false }
 
         do {
+            // 生成一个新的 task
             let task = try originalTask.task(session: session, adapter: adapter, queue: queue)
-
+            
             request.delegate.task = task // resets all task delegate data
-
+            // 将重试次数加1
             request.retryCount += 1
+            // 记录请求开始时间
             request.startTime = CFAbsoluteTimeGetCurrent()
             request.endTime = nil
-
+            // 开始
             task.resume()
 
             return true
