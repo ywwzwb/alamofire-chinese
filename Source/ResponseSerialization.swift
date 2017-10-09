@@ -149,6 +149,7 @@ extension DataRequest {
         completionHandler: @escaping (DataResponse<T.SerializedObject>) -> Void)
         -> Self
     {
+        // 所有操作都是在操作队列中进行的
         delegate.queue.addOperation {
             /// 调用序列化器来序列化结果
             let result = responseSerializer.serializeResponse(
