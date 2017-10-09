@@ -23,21 +23,23 @@
 //
 
 import Foundation
-
+/// 定义数据序列化协议
 /// The type in which all data response serializers must conform to in order to serialize a response.
 public protocol DataResponseSerializerProtocol {
     /// The type of serialized object to be created by this `DataResponseSerializerType`.
+    /// 序列化后的结果类型
     associatedtype SerializedObject
-
+    /// 序列化方法
     /// A closure used by response handlers that takes a request, response, data and error and returns a result.
     var serializeResponse: (URLRequest?, HTTPURLResponse?, Data?, Error?) -> Result<SerializedObject> { get }
 }
 
 // MARK: -
-
+/// 定义一个泛型数据序列化器
 /// A generic `DataResponseSerializerType` used to serialize a request, response, and data into a serialized object.
 public struct DataResponseSerializer<Value>: DataResponseSerializerProtocol {
     /// The type of serialized object to be created by this `DataResponseSerializer`.
+    /// 指定结果类型为泛型
     public typealias SerializedObject = Value
 
     /// A closure used by response handlers that takes a request, response, data and error and returns a result.
@@ -54,7 +56,7 @@ public struct DataResponseSerializer<Value>: DataResponseSerializerProtocol {
 }
 
 // MARK: -
-
+/// 定义下载序列化协议
 /// The type in which all download response serializers must conform to in order to serialize a response.
 public protocol DownloadResponseSerializerProtocol {
     /// The type of serialized object to be created by this `DownloadResponseSerializerType`.
@@ -65,7 +67,7 @@ public protocol DownloadResponseSerializerProtocol {
 }
 
 // MARK: -
-
+/// 定义一个泛型下载序列化器
 /// A generic `DownloadResponseSerializerType` used to serialize a request, response, and data into a serialized object.
 public struct DownloadResponseSerializer<Value>: DownloadResponseSerializerProtocol {
     /// The type of serialized object to be created by this `DownloadResponseSerializer`.
@@ -85,7 +87,7 @@ public struct DownloadResponseSerializer<Value>: DownloadResponseSerializerProto
 }
 
 // MARK: - Timeline
-
+/// 扩展 Request, 用于生成时间线
 extension Request {
     var timeline: Timeline {
         let requestStartTime = self.startTime ?? CFAbsoluteTimeGetCurrent()
@@ -102,8 +104,9 @@ extension Request {
 }
 
 // MARK: - Default
-
+/// 扩展 DataRequest, 添加一个函数, 在请求结束后会调用获取返回结果
 extension DataRequest {
+    /// 使用未序列化的结果
     /// Adds a handler to be called once the request has finished.
     ///
     /// - parameter queue:             The queue on which the completion handler is dispatched.
@@ -130,7 +133,7 @@ extension DataRequest {
 
         return self
     }
-
+    /// 使用指定序列化器序列化的结果
     /// Adds a handler to be called once the request has finished.
     ///
     /// - parameter queue:              The queue on which the completion handler is dispatched.
@@ -147,13 +150,14 @@ extension DataRequest {
         -> Self
     {
         delegate.queue.addOperation {
+            /// 调用序列化器来序列化结果
             let result = responseSerializer.serializeResponse(
                 self.request,
                 self.response,
                 self.delegate.data,
                 self.delegate.error
             )
-
+            /// 生成响应
             var dataResponse = DataResponse<T.SerializedObject>(
                 request: self.request,
                 response: self.response,
@@ -163,14 +167,14 @@ extension DataRequest {
             )
 
             dataResponse.add(self.delegate.metrics)
-
+            /// 调用完成回调
             (queue ?? DispatchQueue.main).async { completionHandler(dataResponse) }
         }
 
         return self
     }
 }
-
+/// 同上
 extension DownloadRequest {
     /// Adds a handler to be called once the request has finished.
     ///
@@ -248,7 +252,7 @@ extension DownloadRequest {
 }
 
 // MARK: - Data
-
+/// 扩展request, 序列化为 Data
 extension Request {
     /// Returns a result data type that contains the response data as-is.
     ///
@@ -271,6 +275,7 @@ extension Request {
 }
 
 extension DataRequest {
+    /// 序列化器
     /// Creates a response serializer that returns the associated data as-is.
     ///
     /// - returns: A data response serializer.
@@ -279,7 +284,7 @@ extension DataRequest {
             return Request.serializeResponseData(response: response, data: data, error: error)
         }
     }
-
+    /// 序列化器, 使用data 来序列化
     /// Adds a handler to be called once the request has finished.
     ///
     /// - parameter completionHandler: The code to be executed once the request has finished.
@@ -300,6 +305,7 @@ extension DataRequest {
 }
 
 extension DownloadRequest {
+    /// 序列化器
     /// Creates a response serializer that returns the associated data as-is.
     ///
     /// - returns: A data response serializer.
@@ -325,6 +331,7 @@ extension DownloadRequest {
     /// - parameter completionHandler: The code to be executed once the request has finished.
     ///
     /// - returns: The request.
+    /// 同上
     @discardableResult
     public func responseData(
         queue: DispatchQueue? = nil,
@@ -351,6 +358,7 @@ extension Request {
     /// - parameter error:    The error already encountered if it exists.
     ///
     /// - returns: The result data type.
+    /// 使用 string 序列化, 这是序列化器
     public static func serializeResponseString(
         encoding: String.Encoding?,
         response: HTTPURLResponse?,
@@ -358,27 +366,29 @@ extension Request {
         error: Error?)
         -> Result<String>
     {
-        guard error == nil else { return .failure(error!) }
-
+        // 如果有错误, 直接返回错误
+        guard error == nil else { return.failure(error!) }
+        /// 判断是否是空返回
         if let response = response, emptyDataStatusCodes.contains(response.statusCode) { return .success("") }
-
+        // 获取数据
         guard let validData = data else {
             return .failure(AFError.responseSerializationFailed(reason: .inputDataNil))
         }
-
+        // 获取编码
         var convertedEncoding = encoding
-
+        // 如果没有指定的编码, 那么使用返回的编码类型
         if let encodingName = response?.textEncodingName as CFString!, convertedEncoding == nil {
             convertedEncoding = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(
                 CFStringConvertIANACharSetNameToEncoding(encodingName))
             )
         }
-
+        /// 如果没有指定编码类型, 默认为 iso-8859-1
         let actualEncoding = convertedEncoding ?? String.Encoding.isoLatin1
-
+        /// 解码
         if let string = String(data: validData, encoding: actualEncoding) {
             return .success(string)
         } else {
+            /// 发生解码错误
             return .failure(AFError.responseSerializationFailed(reason: .stringSerializationFailed(encoding: actualEncoding)))
         }
     }
