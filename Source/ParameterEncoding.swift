@@ -100,7 +100,7 @@ public struct URLEncoding: ParameterEncoding {
     /// Returns a `URLEncoding` instance with an `.httpBody` destination.
     public static var httpBody: URLEncoding { return URLEncoding(destination: .httpBody) }
     
-    ///编码目的地
+    ///编码后的参数位置
     /// The destination defining where the encoded query string is to be applied to the URL request.
     public let destination: Destination
 
