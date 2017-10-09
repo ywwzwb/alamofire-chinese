@@ -23,21 +23,22 @@
 //
 
 import Foundation
-
+/// 用于存储所有与未序列化响应相关的的数据, 适用于上传请求和数据请求
 /// Used to store all data associated with an non-serialized response of a data or upload request.
 public struct DefaultDataResponse {
+    /// 发送的请求
     /// The URL request sent to the server.
     public let request: URLRequest?
-
+    /// 服务器返回的响应
     /// The server's response to the URL request.
     public let response: HTTPURLResponse?
-
+    /// 服务器返回的数据
     /// The data returned by the server.
     public let data: Data?
-
+    /// 在执行请求或是验证过程中发生的错误
     /// The error encountered while executing or validating the request.
     public let error: Error?
-
+    /// 请求生命周期的时间线
     /// The timeline of the complete lifecycle of the request.
     public let timeline: Timeline
 
@@ -69,27 +70,28 @@ public struct DefaultDataResponse {
 }
 
 // MARK: -
-
+/// 用于存储所有与序列化响应相关的的数据, 适用于上传请求和数据请求
 /// Used to store all data associated with a serialized response of a data or upload request.
 public struct DataResponse<Value> {
+    /// 同上
     /// The URL request sent to the server.
     public let request: URLRequest?
-
+    /// 同上
     /// The server's response to the URL request.
     public let response: HTTPURLResponse?
-
+    /// 同上
     /// The data returned by the server.
     public let data: Data?
-
+    /// 序列化的返回结果
     /// The result of response serialization.
     public let result: Result<Value>
-
+    /// 同上
     /// The timeline of the complete lifecycle of the request.
     public let timeline: Timeline
-
+    /// 序列化的返回结果-值
     /// Returns the associated value of the result if it is a success, `nil` otherwise.
     public var value: Value? { return result.value }
-
+    /// 序列化的返回结果-错误
     /// Returns the associated error value if the result if it is a failure, `nil` otherwise.
     public var error: Error? { return result.error }
 
@@ -120,7 +122,9 @@ public struct DataResponse<Value> {
 }
 
 // MARK: -
-
+/// 用于存储所有与序列化响应相关的的数据
+/// 扩展
+/// 调试信息
 extension DataResponse: CustomStringConvertible, CustomDebugStringConvertible {
     /// The textual representation used when written to an output stream, which includes whether the result was a
     /// success or failure.
@@ -144,8 +148,11 @@ extension DataResponse: CustomStringConvertible, CustomDebugStringConvertible {
 }
 
 // MARK: -
-
+/// 用于存储所有与序列化响应相关的的数据
+/// 扩展
+/// 高级函数
 extension DataResponse {
+    /// map, 可以在闭包类写入只有返回成功才会执行的内容
     /// Evaluates the specified closure when the result of this `DataResponse` is a success, passing the unwrapped
     /// result value as a parameter.
     ///
@@ -171,7 +178,7 @@ extension DataResponse {
 
         return response
     }
-
+    /// flatmap, 与 map 类似, 可以在其中执行一个可抛出异常的闭包, 抛出异常后, 会返回错误
     /// Evaluates the given closure when the result of this `DataResponse` is a success, passing the unwrapped result
     /// value as a parameter.
     ///
@@ -202,7 +209,7 @@ extension DataResponse {
 }
 
 // MARK: -
-
+/// 用于存储所有与未序列化响应相关的的数据, 适用于下载请求
 /// Used to store all data associated with an non-serialized response of a download request.
 public struct DefaultDownloadResponse {
     /// The URL request sent to the server.
@@ -210,16 +217,16 @@ public struct DefaultDownloadResponse {
 
     /// The server's response to the URL request.
     public let response: HTTPURLResponse?
-
+    /// 临时文件路径
     /// The temporary destination URL of the data returned from the server.
     public let temporaryURL: URL?
-
+    /// 目标文件路径
     /// The final destination URL of the data returned from the server if it was moved.
     public let destinationURL: URL?
-
+    /// 断点续传数据
     /// The resume data generated if the request was cancelled.
     public let resumeData: Data?
-
+    
     /// The error encountered while executing or validating the request.
     public let error: Error?
 
@@ -260,7 +267,7 @@ public struct DefaultDownloadResponse {
 }
 
 // MARK: -
-
+/// 用于存储所有与序列化响应相关的的数据, 适用于下载请求
 /// Used to store all data associated with a serialized response of a download request.
 public struct DownloadResponse<Value> {
     /// The URL request sent to the server.
