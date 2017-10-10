@@ -127,29 +127,31 @@ public struct URLEncoding: ParameterEncoding {
     /// - returns: The encoded request.
     ///
     public func encode(_ urlRequest: URLRequestConvertible, with parameters: Parameters?) throws -> URLRequest {
-        /// 获取 request
+        // 获取 request
         var urlRequest = try urlRequest.asURLRequest()
-        /// 获取参数, 如果没有参数, 那么直接返回
+        // 获取参数, 如果没有参数, 那么直接返回
         guard let parameters = parameters else { return urlRequest }
-        /// 获取请求方法, 并判断是否需要编码到 url 中
+        // 获取请求方法, 同时, 根据请求方法来判断是否需要编码参数到 url 中
         if let method = HTTPMethod(rawValue: urlRequest.httpMethod ?? "GET"), encodesParametersInURL(with: method) {
-            /// 获取 url
+            // 直接编码到 url 中
+            // 获取 url
             guard let url = urlRequest.url else {
                 throw AFError.parameterEncodingFailed(reason: .missingURL)
             }
-            /// 构建一个URLComponents 对象, 并在其中添加参数
+            // 构建一个URLComponents 对象, 并在其中添加参数
             if var urlComponents = URLComponents(url: url, resolvingAgainstBaseURL: false) {
-                /// 此处 map 是 optional 的map, 如果 optionvalue 不会空的时候, 会调用 map 内的闭包
+                // 此处 map 是 optional 的map, 如果 optionvalue 不会空的时候, 会调用 map 内的闭包
+                // 如果 url 中本来就有一部分参数了, 那么就将新的参数附加在后面
                 let percentEncodedQuery = (urlComponents.percentEncodedQuery.map { $0 + "&" } ?? "") + query(parameters)
                 urlComponents.percentEncodedQuery = percentEncodedQuery
                 urlRequest.url = urlComponents.url
             }
         } else {
-            /// 这里是要添加到请求体中
+            // 这里是要添加到请求体中
             if urlRequest.value(forHTTPHeaderField: "Content-Type") == nil {
                 urlRequest.setValue("application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
             }
-            /// 编码 body
+            // 编码 body
             urlRequest.httpBody = query(parameters).data(using: .utf8, allowLossyConversion: false)
         }
 
