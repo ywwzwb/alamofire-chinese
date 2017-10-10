@@ -26,7 +26,7 @@ import Foundation
 /// 负责处理所有与内部 session 关联的代理回调
 /// Responsible for handling all delegate callbacks for the underlying session.
 open class SessionDelegate: NSObject {
-    // 重写 URLSessionDelegate 的所有回调函数 为苏醒
+    // 重写 URLSessionDelegate 的所有回调函数为属性
     // MARK: URLSessionDelegate Overrides
 
     /// Overrides default behavior for URLSessionDelegate method `urlSession(_:didBecomeInvalidWithError:)`.
