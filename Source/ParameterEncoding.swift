@@ -149,12 +149,12 @@ public struct URLEncoding: ParameterEncoding {
         } else {
             // 这里是要添加到请求体中
             if urlRequest.value(forHTTPHeaderField: "Content-Type") == nil {
+                // 在请求头中设置编码格式
                 urlRequest.setValue("application/x-www-form-urlencoded; charset=utf-8", forHTTPHeaderField: "Content-Type")
             }
-            // 编码 body
+            // 编码到 body 中
             urlRequest.httpBody = query(parameters).data(using: .utf8, allowLossyConversion: false)
         }
-
         return urlRequest
     }
     /// 创建一个使用百分号转义过, 使用 urlencode 编码的键和值, 如果值是一个集合类型, 有可能会有多个返回
@@ -264,7 +264,7 @@ public struct URLEncoding: ParameterEncoding {
     }
     /// 判断是否要直接在 url 中添加查询字符串
     private func encodesParametersInURL(with method: HTTPMethod) -> Bool {
-        /// 如果再目的地中明确指出了, 那么直接返回结果
+        /// 如果在编码位置中明确指出了, 那么就根据这个来确定是否要编码在 url 中
         switch destination {
         case .queryString:
             return true
@@ -273,7 +273,7 @@ public struct URLEncoding: ParameterEncoding {
         default:
             break
         }
-        /// 如果是依赖方法, 那么就根据不同方法返回不同结果
+        /// 如果是依赖方法, 那么就根据请求的方法来决定
         switch method {
         case .get, .head, .delete:
             return true
